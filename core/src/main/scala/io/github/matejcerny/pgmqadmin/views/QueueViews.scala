@@ -1,13 +1,10 @@
 package io.github.matejcerny.pgmqadmin.views
 
+import io.github.matejcerny.pgmqadmin.views.Htmx.*
 import pgmq4s.QueueInfo
 import scalatags.Text.all.*
 
 object QueueViews:
-
-  private val hxGet = attr("hx-get")
-  private val hxTarget = attr("hx-target")
-  private val hxSwap = attr("hx-swap")
 
   def queuesContent(queues: List[QueueInfo]): Frag =
     frag(

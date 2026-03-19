@@ -30,9 +30,9 @@ object AppConfig:
     db = DbConfig(
       host = "localhost",
       port = 5432,
-      user = "postgres",
-      database = "postgres",
-      password = Some("postgres"),
+      user = "pgmq",
+      database = "pgmq",
+      password = Some("pgmq"),
       poolSize = 10
     )
   )

@@ -1,6 +1,6 @@
 package io.github.matejcerny.pgmqadmin
 
-import cats.effect.*
+import cats.effect.{ IO, IOApp }
 import io.github.matejcerny.pgmqadmin.config.AppConfig
 import io.github.matejcerny.pgmqadmin.routes.QueueRoutes
 import natchez.Trace
@@ -9,7 +9,7 @@ import org.http4s.server.Router
 import pgmq4s.skunk.SkunkPgmqAdmin
 import skunk.Session
 
-object Main extends IOApp.Simple:
+object App extends IOApp.Simple:
 
   import Trace.Implicits.noop
 
@@ -27,7 +27,7 @@ object Main extends IOApp.Simple:
       )
       .flatMap: pool =>
         val admin = SkunkPgmqAdmin[IO](pool)
-        val routes = QueueRoutes.make(admin)
+        val routes = QueueRoutes.routes(admin)
 
         EmberServerBuilder
           .default[IO]
