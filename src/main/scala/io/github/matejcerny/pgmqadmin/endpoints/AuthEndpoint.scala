@@ -4,7 +4,7 @@ import sttp.tapir.*
 
 object AuthEndpoint:
 
-  type AuthenticatedEndpoint = Endpoint[Option[String], Unit, Unit, String, Any]
+  type AuthenticatedEndpoint[I] = Endpoint[Option[String], I, Unit, String, Any]
 
   val authenticated: Endpoint[Option[String], Unit, Unit, Unit, Any] =
     endpoint
