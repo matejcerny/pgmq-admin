@@ -1,6 +1,6 @@
 package io.github.matejcerny.pgmqadmin.views
 
-import io.github.matejcerny.pgmqadmin.config.AppVersion
+import io.github.matejcerny.pgmqadmin.config.BuildInfo
 import scalatags.Text.all.*
 import scalatags.Text.tags2
 
@@ -42,7 +42,7 @@ object View:
         li(navLink("Metrics", "/metrics", activeNav))
       ),
       ul(
-        li(small(s"v$AppVersion")),
+        li(small(s"v${BuildInfo.version}")),
         li(
           a(
             href := "#",
