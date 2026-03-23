@@ -2,9 +2,10 @@ package io.github.matejcerny.pgmqadmin.routes
 
 import cats.effect.IO
 import io.github.matejcerny.pgmqadmin.endpoints.QueueEndpoints.*
+import io.github.matejcerny.pgmqadmin.model.{ SortColumn, SortDir, SortState }
 import io.github.matejcerny.pgmqadmin.views.*
 import org.http4s.HttpRoutes
-import pgmq4s.{ PgmqAdmin, QueueName }
+import pgmq4s.{ PgmqAdmin, QueueInfo, QueueName }
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
 object QueueRoutes extends Auth:
@@ -19,9 +20,10 @@ object QueueRoutes extends Auth:
 
     val queuesTableEndpoint =
       secure(queuesTable): _ =>
-        (_: Unit) =>
+        (sortBy: Option[String], sortDir: Option[String]) =>
           admin.listQueues.map: queues =>
-            Right(QueueViews.queuesTableHtml(queues).render)
+            val sort: Option[SortState] = SortState.from(sortBy, sortDir)
+            Right(QueueViews.queuesTableHtml(sortQueues(queues, sort), sort).render)
 
     val queueDetailEndpoint =
       secure(queueDetail): _ =>
@@ -79,3 +81,14 @@ object QueueRoutes extends Auth:
         createQueueEndpoint
       )
     )
+
+  private def sortQueues(queues: List[QueueInfo], sort: Option[SortState]): List[QueueInfo] =
+    sort match
+      case None                         => queues
+      case Some(SortState(column, dir)) =>
+        val sorted = column match
+          case SortColumn.Name      => queues.sortBy(_.queueName.toString)
+          case SortColumn.CreatedAt => queues.sortBy(_.createdAt.toString)
+        dir match
+          case SortDir.Asc  => sorted
+          case SortDir.Desc => sorted.reverse
