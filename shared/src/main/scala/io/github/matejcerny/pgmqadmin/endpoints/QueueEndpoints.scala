@@ -32,9 +32,10 @@ object QueueEndpoints:
       .in("queues" / path[String]("queueName") / "detail")
       .out(htmlBodyUtf8)
 
-  val queueMessages: AuthenticatedEndpoint[String] =
+  val queueMessages: AuthenticatedEndpoint[(String, Option[Int])] =
     authenticated.get
       .in("queues" / path[String]("queueName") / "messages")
+      .in(query[Option[Int]]("qty"))
       .out(htmlBodyUtf8)
 
   val queueSettings: AuthenticatedEndpoint[String] =

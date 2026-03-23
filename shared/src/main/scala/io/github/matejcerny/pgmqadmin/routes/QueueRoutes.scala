@@ -5,12 +5,12 @@ import io.github.matejcerny.pgmqadmin.endpoints.QueueEndpoints.*
 import io.github.matejcerny.pgmqadmin.model.{ SortColumn, SortDir, SortState }
 import io.github.matejcerny.pgmqadmin.views.*
 import org.http4s.HttpRoutes
-import pgmq4s.{ PgmqAdmin, QueueInfo, QueueName }
+import pgmq4s.{ Message, PgmqAdmin, PgmqClient, QueueInfo, QueueName }
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
 object QueueRoutes extends Auth:
 
-  def routes(admin: PgmqAdmin[IO]): HttpRoutes[IO] =
+  def routes(admin: PgmqAdmin[IO], client: PgmqClient[IO]): HttpRoutes[IO] =
 
     val queuesPageEndpoint =
       secure(queuesPage): _ =>
@@ -28,16 +28,26 @@ object QueueRoutes extends Auth:
     val queueDetailEndpoint =
       secure(queueDetail): _ =>
         (queueName: String) =>
-          IO.pure(Right(View.fullPage("Queues", s"Queue: $queueName", QueueDetailViews.queueDetailContent(queueName))))
+          admin
+            .metrics(QueueName(queueName))
+            .map: metrics =>
+              Right(
+                View.fullPage("Queues", s"Queue: $queueName", QueueDetailViews.queueDetailContent(queueName, metrics))
+              )
 
     val queueMessagesEndpoint =
       secure(queueMessages): _ =>
-        (queueName: String) =>
-          IO.pure(
-            Right(
-              View.fullPage("Queues", s"Queue: $queueName - Messages", QueueDetailViews.queueMessagesContent(queueName))
-            )
-          )
+        (queueName: String, qty: Option[Int]) =>
+          client
+            .read[String](QueueName(queueName), 0, qty.getOrElse(20))
+            .map: messages =>
+              Right(
+                View.fullPage(
+                  "Queues",
+                  s"Queue: $queueName - Messages",
+                  QueueDetailViews.queueMessagesContent(queueName, messages)
+                )
+              )
 
     val queueSettingsEndpoint =
       secure(queueSettings): _ =>
