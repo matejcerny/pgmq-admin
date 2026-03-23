@@ -7,7 +7,7 @@ import io.github.matejcerny.pgmqadmin.routes.{ DashboardRoutes, MetricRoutes, Qu
 import natchez.Trace
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
-import pgmq4s.skunk.SkunkPgmqAdmin
+import pgmq4s.skunk.{ SkunkPgmqAdmin, SkunkPgmqClient }
 import skunk.Session
 
 object App extends IOApp.Simple:
@@ -28,9 +28,10 @@ object App extends IOApp.Simple:
       )
       .flatMap: pool =>
         val admin = SkunkPgmqAdmin[IO](pool)
+        val client = SkunkPgmqClient[IO](pool)
         val routes =
           DashboardRoutes.routes <+>
-            QueueRoutes.routes(admin) <+>
+            QueueRoutes.routes(admin, client) <+>
             TopicRoutes.routes <+>
             MetricRoutes.routes
 

@@ -38,7 +38,7 @@ object QueueViews:
     )
 
   def queuesTableHtml(queues: List[QueueInfo], sort: Option[SortState] = None): Tag =
-    table(role := "grid")(
+    table(cls := "striped")(
       thead(
         tr(
           sortableHeader("Queue Name", SortColumn.Name, sort),
@@ -61,16 +61,14 @@ object QueueViews:
                 href := "#",
                 attr("role") := "button",
                 cls := "outline secondary",
-                cls := "small",
                 attr("onclick") := s"document.getElementById('purge-modal-$name').showModal(); return false;",
                 attr("title") := "Purge messages"
               )("\uD83E\uDDF9"),
-              raw("&nbsp;"),
+              raw(" "),
               a(
                 href := "#",
                 attr("role") := "button",
                 cls := "outline secondary",
-                cls := "small",
                 attr("onclick") := s"document.getElementById('delete-modal-$name').showModal(); return false;",
                 attr("title") := "Delete queue"
               )("\uD83D\uDDD1")

@@ -17,6 +17,7 @@ object View:
         rel := "stylesheet",
         href := "https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
       ),
+      tag("style")(":root { --pico-spacing: 0.5rem; --pico-typography-spacing-vertical: 0.5rem; }"),
       script(src := "https://unpkg.com/htmx.org@2.0.4"),
       themeScript
     )
@@ -47,7 +48,7 @@ object View:
           a(
             href := "#",
             attr("role") := "button",
-            cls := "outline secondary small",
+            cls := "outline secondary",
             attr("onclick") := "toggleTheme(); return false;"
           )("\uD83C\uDF13")
         )
