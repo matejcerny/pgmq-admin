@@ -10,9 +10,11 @@ object QueueEndpoints:
       .in("queues")
       .out(htmlBodyUtf8)
 
-  val queuesTable: AuthenticatedEndpoint[Unit] =
+  val queuesTable: AuthenticatedEndpoint[(Option[String], Option[String])] =
     authenticated.get
       .in("queues" / "table")
+      .in(query[Option[String]]("sortBy"))
+      .in(query[Option[String]]("sortDir"))
       .out(htmlBodyUtf8)
 
   val deleteQueue: AuthenticatedEndpoint[String] =

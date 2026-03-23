@@ -1,5 +1,6 @@
 package io.github.matejcerny.pgmqadmin.views
 
+import io.github.matejcerny.pgmqadmin.model.{ SortColumn, SortDir, SortState }
 import io.github.matejcerny.pgmqadmin.views.Htmx.*
 import io.github.matejcerny.pgmqadmin.views.View.render
 import pgmq4s.QueueInfo
@@ -36,14 +37,14 @@ object QueueViews:
       queues.map(qi => purgeModal(qi.queueName.toString))
     )
 
-  def queuesTableHtml(queues: List[QueueInfo]): Tag =
+  def queuesTableHtml(queues: List[QueueInfo], sort: Option[SortState] = None): Tag =
     table(role := "grid")(
       thead(
         tr(
-          th("Queue Name"),
+          sortableHeader("Queue Name", SortColumn.Name, sort),
           th("Partitioned"),
           th("Unlogged"),
-          th("Created At"),
+          sortableHeader("Created At", SortColumn.CreatedAt, sort),
           th("Actions")
         )
       ),
@@ -76,6 +77,28 @@ object QueueViews:
             )
           )
       )
+    )
+
+  private def sortableHeader(label: String, column: SortColumn, sort: Option[SortState]): Tag =
+    val next: Option[SortState] = sort match
+      case Some(s) => s.nextFor(column)
+      case None    => Some(SortState.firstFor(column))
+    val arrow: String = sort match
+      case Some(SortState(`column`, SortDir.Asc))  => " \u25B2"
+      case Some(SortState(`column`, SortDir.Desc)) => " \u25BC"
+      case _                                       => ""
+    val url: String = next match
+      case Some(s) => s"/queues/table?sortBy=${s.column.value}&sortDir=${s.dir.value}"
+      case None    => "/queues/table"
+    th(
+      a(
+        href := "#",
+        attr("role") := "button",
+        cls := "outline secondary",
+        hxGet := url,
+        hxTarget := "#queue-table-container",
+        hxSwap := "innerHTML"
+      )(label + arrow)
     )
 
   private def createQueueModal: Tag =
