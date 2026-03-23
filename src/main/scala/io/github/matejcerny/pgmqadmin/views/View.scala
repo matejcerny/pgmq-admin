@@ -1,20 +1,12 @@
 package io.github.matejcerny.pgmqadmin.views
 
+import io.github.matejcerny.pgmqadmin.config.AppVersion
 import scalatags.Text.all.*
 import scalatags.Text.tags2
 
-object Layout:
+object View:
 
-  def fullPage(pageTitle: String, bodyContent: Frag): String =
-    "<!DOCTYPE html>\n" + html(
-      attr("lang") := "en",
-      attr("data-theme") := "light",
-      pageHead(pageTitle),
-      body(
-        navigation,
-        tag("main")(cls := "container")(bodyContent)
-      )
-    ).render
+  extension (b: Boolean) def render: String = if b then "Yes" else "No"
 
   private def pageHead(pageTitle: String): Tag =
     head(
@@ -29,22 +21,42 @@ object Layout:
       themeScript
     )
 
-  private val navigation: Tag =
+  def fullPage(activeNav: String, pageTitle: String, bodyContent: Frag): String =
+    "<!DOCTYPE html>\n" + html(
+      attr("lang") := "en",
+      attr("data-theme") := "light",
+      pageHead(pageTitle),
+      body(
+        navigation(activeNav),
+        tag("main")(cls := "container")(bodyContent)
+      )
+    ).render
+
+  private def navigation(activeNav: String): Tag =
     tags2.nav(cls := "container")(
-      ul(li(strong("pgmq-admin"))),
       ul(
+        li(strong(a(href := "/")("pgmq-admin"))),
+        li(navLink("Dashboard", "/", activeNav)),
+        li(navLink("Queues", "/queues", activeNav)),
+        li(navLink("Topics", "/topics", activeNav)),
+        li(navLink("Metrics", "/metrics", activeNav))
+      ),
+      ul(
+        li(small(s"v$AppVersion")),
         li(
           a(
             href := "#",
             attr("role") := "button",
-            cls := "outline secondary",
-            style := "padding: 0.25rem 0.5rem;",
+            cls := "outline secondary small",
             attr("onclick") := "toggleTheme(); return false;"
           )("\uD83C\uDF13")
-        ),
-        li("admin")
+        )
       )
     )
+
+  private def navLink(label: String, href_ : String, activeNav: String): Tag =
+    if label == activeNav then a(href := href_, attr("aria-current") := "page")(label)
+    else a(href := href_)(label)
 
   private val themeScript: Tag =
     script(raw("""

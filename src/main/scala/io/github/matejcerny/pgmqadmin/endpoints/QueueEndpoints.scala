@@ -25,6 +25,21 @@ object QueueEndpoints:
       .in("queues" / path[String]("queueName") / "purge")
       .out(htmlBodyUtf8)
 
+  val queueDetail: AuthenticatedEndpoint[String] =
+    authenticated.get
+      .in("queues" / path[String]("queueName") / "detail")
+      .out(htmlBodyUtf8)
+
+  val queueMessages: AuthenticatedEndpoint[String] =
+    authenticated.get
+      .in("queues" / path[String]("queueName") / "messages")
+      .out(htmlBodyUtf8)
+
+  val queueSettings: AuthenticatedEndpoint[String] =
+    authenticated.get
+      .in("queues" / path[String]("queueName") / "settings")
+      .out(htmlBodyUtf8)
+
   val createQueue: AuthenticatedEndpoint[String] =
     authenticated.post
       .in("queues" / path[String]("queueName"))
