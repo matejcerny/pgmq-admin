@@ -4,7 +4,7 @@ import cats.effect.IO
 import io.github.matejcerny.pgmqadmin.endpoints.QueueEndpoints.*
 import io.github.matejcerny.pgmqadmin.views.*
 import org.http4s.HttpRoutes
-import pgmq4s.PgmqAdmin
+import pgmq4s.{ PgmqAdmin, QueueName }
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 
 object QueueRoutes extends Auth:
@@ -23,6 +23,33 @@ object QueueRoutes extends Auth:
           admin.listQueues.map: queues =>
             Right(QueueViews.queuesTableHtml(queues).render)
 
+    val deleteQueueEndpoint =
+      secure(deleteQueue): _ =>
+        (queueName: String) =>
+          admin.dropQueue(QueueName(queueName)) *>
+            admin.listQueues.map: queues =>
+              Right(QueueViews.queuesTableHtml(queues).render)
+
+    val purgeQueueEndpoint =
+      secure(purgeQueue): _ =>
+        (queueName: String) =>
+          admin.purgeQueue(QueueName(queueName)) *>
+            admin.listQueues.map: queues =>
+              Right(QueueViews.queuesTableHtml(queues).render)
+
+    val createQueueEndpoint =
+      secure(createQueue): _ =>
+        (queueName: String) =>
+          admin.createQueue(QueueName(queueName)) *>
+            admin.listQueues.map: queues =>
+              Right(QueueViews.queuesTableHtml(queues).render)
+
     Http4sServerInterpreter[IO]().toRoutes(
-      List(queuesPageEndpoint, queuesTableEndpoint)
+      List(
+        queuesPageEndpoint,
+        queuesTableEndpoint,
+        deleteQueueEndpoint,
+        purgeQueueEndpoint,
+        createQueueEndpoint
+      )
     )
