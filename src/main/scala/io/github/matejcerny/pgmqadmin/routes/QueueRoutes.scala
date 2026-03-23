@@ -15,13 +15,36 @@ object QueueRoutes extends Auth:
       secure(queuesPage): _ =>
         (_: Unit) =>
           admin.listQueues.map: queues =>
-            Right(Layout.fullPage("Queues", QueueViews.queuesContent(queues)))
+            Right(View.fullPage("Queues", "Queues", QueueViews.queuesContent(queues)))
 
     val queuesTableEndpoint =
       secure(queuesTable): _ =>
         (_: Unit) =>
           admin.listQueues.map: queues =>
             Right(QueueViews.queuesTableHtml(queues).render)
+
+    val queueDetailEndpoint =
+      secure(queueDetail): _ =>
+        (queueName: String) =>
+          IO.pure(Right(View.fullPage("Queues", s"Queue: $queueName", QueueDetailViews.queueDetailContent(queueName))))
+
+    val queueMessagesEndpoint =
+      secure(queueMessages): _ =>
+        (queueName: String) =>
+          IO.pure(
+            Right(
+              View.fullPage("Queues", s"Queue: $queueName - Messages", QueueDetailViews.queueMessagesContent(queueName))
+            )
+          )
+
+    val queueSettingsEndpoint =
+      secure(queueSettings): _ =>
+        (queueName: String) =>
+          IO.pure(
+            Right(
+              View.fullPage("Queues", s"Queue: $queueName - Settings", QueueDetailViews.queueSettingsContent(queueName))
+            )
+          )
 
     val deleteQueueEndpoint =
       secure(deleteQueue): _ =>
@@ -48,6 +71,9 @@ object QueueRoutes extends Auth:
       List(
         queuesPageEndpoint,
         queuesTableEndpoint,
+        queueDetailEndpoint,
+        queueMessagesEndpoint,
+        queueSettingsEndpoint,
         deleteQueueEndpoint,
         purgeQueueEndpoint,
         createQueueEndpoint

@@ -64,3 +64,4 @@ Session.vim
 Thumbs.db
 Desktop.ini
 app.version
+src/main/scala/io/github/matejcerny/pgmqadmin/config/package.scala

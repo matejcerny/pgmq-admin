@@ -1,6 +1,7 @@
 package io.github.matejcerny.pgmqadmin.views
 
 import io.github.matejcerny.pgmqadmin.views.Htmx.*
+import io.github.matejcerny.pgmqadmin.views.View.render
 import pgmq4s.QueueInfo
 import scalatags.Text.all.*
 import scalatags.Text.tags2
@@ -9,20 +10,22 @@ object QueueViews:
 
   def queuesContent(queues: List[QueueInfo]): Frag =
     frag(
-      div(
-        style := "display: flex; justify-content: space-between; align-items: center;",
-        h2("Queues"),
-        div(
-          button(
-            attr("onclick") := "document.getElementById('create-queue-modal').showModal()"
-          )("Create Queue"),
-          raw("&nbsp;"),
-          button(
-            cls := "secondary",
-            hxGet := "/queues/table",
-            hxTarget := "#queue-table-container",
-            hxSwap := "innerHTML"
-          )("Refresh")
+      tags2.nav(
+        ul(li(h2("Queues"))),
+        ul(
+          li(
+            button(
+              attr("onclick") := "document.getElementById('create-queue-modal').showModal()"
+            )("Create Queue")
+          ),
+          li(
+            button(
+              cls := "secondary",
+              hxGet := "/queues/table",
+              hxTarget := "#queue-table-container",
+              hxSwap := "innerHTML"
+            )("Refresh")
+          )
         )
       ),
       div(id := "queue-table-container")(
@@ -38,6 +41,8 @@ object QueueViews:
       thead(
         tr(
           th("Queue Name"),
+          th("Partitioned"),
+          th("Unlogged"),
           th("Created At"),
           th("Actions")
         )
@@ -46,14 +51,16 @@ object QueueViews:
         queues.map: qi =>
           val name: String = qi.queueName.toString
           tr(
-            td(name),
+            td(a(href := s"/queues/$name/detail")(name)),
+            td(qi.isPartitioned.render),
+            td(qi.isUnlogged.render),
             td(qi.createdAt.toString),
             td(
               a(
                 href := "#",
                 attr("role") := "button",
                 cls := "outline secondary",
-                style := "padding: 0.25rem 0.5rem; font-size: 1.2rem;",
+                cls := "small",
                 attr("onclick") := s"document.getElementById('purge-modal-$name').showModal(); return false;",
                 attr("title") := "Purge messages"
               )("\uD83E\uDDF9"),
@@ -62,7 +69,7 @@ object QueueViews:
                 href := "#",
                 attr("role") := "button",
                 cls := "outline secondary",
-                style := "padding: 0.25rem 0.5rem; font-size: 1.2rem;",
+                cls := "small",
                 attr("onclick") := s"document.getElementById('delete-modal-$name').showModal(); return false;",
                 attr("title") := "Delete queue"
               )("\uD83D\uDDD1")
