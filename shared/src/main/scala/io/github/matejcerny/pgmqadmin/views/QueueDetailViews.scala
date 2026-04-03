@@ -1,7 +1,8 @@
 package io.github.matejcerny.pgmqadmin.views
 
 import io.github.matejcerny.pgmqadmin.views.Htmx.*
-import pgmq4s.{ Message, QueueMetrics }
+import pgmq4s.domain.Message.*
+import pgmq4s.domain.QueueMetrics
 import scalatags.Text.all.*
 import scalatags.Text.tags2
 
@@ -16,7 +17,7 @@ object QueueDetailViews:
         case Some(m) => metricsGrid(m)
     )
 
-  def queueMessagesContent(queueName: String, messages: List[Message.Plain[String]]): Frag =
+  def queueMessagesContent(queueName: String, messages: List[Inbound.Plain[String]]): Frag =
     frag(
       breadcrumb(queueName),
       tabNav(queueName, active = "Messages"),
@@ -54,7 +55,7 @@ object QueueDetailViews:
         else if s < 86400 then s"${s / 3600}h ${(s % 3600) / 60}m"
         else s"${s / 86400}d ${(s % 86400) / 3600}h"
 
-  private def messagesTable(messages: List[Message.Plain[String]]): Tag =
+  private def messagesTable(messages: List[Inbound.Plain[String]]): Tag =
     div(style := "overflow-x: auto")(
       table(cls := "striped")(
         thead(
@@ -69,10 +70,10 @@ object QueueDetailViews:
         tbody(
           messages.map: msg =>
             tr(
-              td(msg.msgId.toString),
-              td(msg.readCt.toString),
+              td(msg.id.toString),
+              td(msg.readCount.toString),
               td(msg.enqueuedAt.toString),
-              td(msg.vt.toString),
+              td(msg.visibleAt.toString),
               td(pre(code(msg.payload)))
             )
         )

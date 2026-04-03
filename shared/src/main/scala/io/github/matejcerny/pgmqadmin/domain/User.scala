@@ -1,4 +1,4 @@
-package io.github.matejcerny.pgmqadmin.auth
+package io.github.matejcerny.pgmqadmin.domain
 
 final case class User(name: String, role: String)
 
