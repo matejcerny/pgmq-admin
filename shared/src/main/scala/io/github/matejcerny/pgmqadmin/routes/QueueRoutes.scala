@@ -1,91 +1,141 @@
 package io.github.matejcerny.pgmqadmin.routes
 
 import cats.effect.IO
-import cats.syntax.traverse.*
+import io.github.matejcerny.pgmqadmin.domain.MessageSortState
 import io.github.matejcerny.pgmqadmin.endpoints.QueueEndpoints.*
-import io.github.matejcerny.pgmqadmin.domain.{ SortColumn, SortDir, SortState }
+import io.github.matejcerny.pgmqadmin.services.*
 import io.github.matejcerny.pgmqadmin.views.*
 import org.http4s.HttpRoutes
-import pgmq4s.domain.*
-import pgmq4s.{ PgmqAdmin, PgmqClient }
+import pgmq4s.domain.pagination.PageSize
 import sttp.tapir.server.http4s.Http4sServerInterpreter
-
-import scala.concurrent.duration.*
 
 object QueueRoutes extends Auth:
 
-  def routes(admin: PgmqAdmin[IO], client: PgmqClient[IO]): HttpRoutes[IO] =
+  def routes(
+      queueService: QueueService,
+      messageService: MessageService,
+      notificationService: NotificationService
+  ): HttpRoutes[IO] =
 
     val queuesPageEndpoint =
       secure(queuesPage): _ =>
         (_: Unit) =>
-          admin.listQueues.map: queues =>
-            Right(View.fullPage("Queues", "Queues", QueueViews.queuesContent(queues)))
+          queueService
+            .listQueues(None, None)
+            .map: (queues, _) =>
+              View.fullPage("Queues", "Queues", QueueViews.queuesContent(queues))
 
     val queuesTableEndpoint =
       secure(queuesTable): _ =>
         (sortBy: Option[String], sortDir: Option[String]) =>
-          admin.listQueues.map: queues =>
-            val sort: Option[SortState] = SortState.from(sortBy, sortDir)
-            Right(QueueViews.queuesTableHtml(sortQueues(queues, sort), sort).render)
+          queueService
+            .listQueues(sortBy, sortDir)
+            .map:
+              QueueViews.queuesTableHtml(_, _).render
 
     val queueDetailEndpoint =
       secure(queueDetail): _ =>
         (queueName: String) =>
-          QueueName(queueName).traverse: qn =>
-            admin
-              .metrics(qn)
-              .map: metrics =>
-                View.fullPage("Queues", s"Queue: $queueName", QueueDetailViews.queueDetailContent(queueName, metrics))
+          for
+            metrics <- queueService.getMetrics(queueName)
+            notifyState <- notificationService.getThrottleState(queueName)
+          yield View.fullPage(
+            "Queues",
+            s"Queue: $queueName",
+            QueueDetailViews.queueDetailContent(queueName, metrics, notifyState)
+          )
 
     val queueMessagesEndpoint =
       secure(queueMessages): _ =>
-        (queueName: String, qty: Option[Int]) =>
-          (for
-            qn <- QueueName(queueName)
-            bs <- BatchSize(qty.getOrElse(20))
-          yield (qn, bs)).traverse: (qn, bs) =>
-            client
-              .read[String](qn, 0.secondsVisibility, bs)
-              .map: messages =>
-                View.fullPage(
-                  "Queues",
-                  s"Queue: $queueName - Messages",
-                  QueueDetailViews.queueMessagesContent(queueName, messages)
-                )
+        (
+            queueName: String,
+            pageSizeParam: Option[String],
+            cursor: Option[String],
+            sortBy: Option[String],
+            sortDir: Option[String]
+        ) =>
+          val pageSize = parsePageSize(pageSizeParam)
+          val sortState = MessageSortState.from(sortBy, sortDir)
+          messageService
+            .browseMessages(queueName, pageSize, sortState.toSort, cursor)
+            .map: page =>
+              View.fullPage(
+                "Queues",
+                s"Queue: $queueName - Messages",
+                QueueDetailViews.queueMessagesContent(queueName, page, sortState, pageSize)
+              )
 
-    val queueSettingsEndpoint =
-      secure(queueSettings): _ =>
+    val messagesTableEndpoint =
+      secure(messagesTable): _ =>
+        (
+            queueName: String,
+            pageSizeParam: Option[String],
+            cursor: Option[String],
+            sortBy: Option[String],
+            sortDir: Option[String]
+        ) =>
+          val pageSize = parsePageSize(pageSizeParam)
+          val sortState = MessageSortState.from(sortBy, sortDir)
+          messageService
+            .browseMessages(queueName, pageSize, sortState.toSort, cursor)
+            .map:
+              QueueDetailViews.messagesTableHtml(queueName, _, sortState, pageSize).render
+
+    val enableNotifyInsertEndpoint =
+      secure(enableNotifyInsert): _ =>
+        (queueName: String, throttleMs: Option[Int]) =>
+          notificationService
+            .enableNotifyInsert(queueName, throttleMs)
+            .map:
+              QueueDetailViews.notifyInsertModalBody(queueName, _).render
+
+    val disableNotifyInsertEndpoint =
+      secure(disableNotifyInsert): _ =>
         (queueName: String) =>
-          IO.pure(
-            Right(
-              View.fullPage("Queues", s"Queue: $queueName - Settings", QueueDetailViews.queueSettingsContent(queueName))
-            )
-          )
+          notificationService
+            .disableNotifyInsert(queueName)
+            .map: _ =>
+              QueueDetailViews.notifyInsertModalBody(queueName, None).render
+
+    val updateNotifyInsertEndpoint =
+      secure(updateNotifyInsert): _ =>
+        (queueName: String, throttleMs: Int) =>
+          notificationService
+            .updateNotifyInsert(queueName, throttleMs)
+            .map:
+              QueueDetailViews.notifyInsertModalBody(queueName, _).render
+
+    val settingsPurgeQueueEndpoint =
+      secure(settingsPurgeQueue): _ =>
+        (queueName: String) =>
+          notificationService
+            .purgeWithNotifyState(queueName)
+            .map:
+              QueueDetailViews.settingsGrid(queueName, _, purged = true).render
 
     val deleteQueueEndpoint =
       secure(deleteQueue): _ =>
         (queueName: String) =>
-          QueueName(queueName).traverse: qn =>
-            admin.dropQueue(qn) *>
-              admin.listQueues.map: queues =>
-                QueueViews.queuesTableHtml(queues).render
+          queueService
+            .dropQueue(queueName)
+            .map:
+              QueueViews.queuesTableHtml(_).render
 
     val purgeQueueEndpoint =
       secure(purgeQueue): _ =>
         (queueName: String) =>
-          QueueName(queueName).traverse: qn =>
-            admin.purgeQueue(qn) *>
-              admin.listQueues.map: queues =>
-                QueueViews.queuesTableHtml(queues).render
+          queueService
+            .purgeQueue(queueName)
+            .map:
+              QueueViews.queuesTableHtml(_).render
 
     val createQueueEndpoint =
       secure(createQueue): _ =>
         (queueName: String) =>
-          QueueName(queueName).traverse: qn =>
-            admin.createQueue(qn) *>
-              admin.listQueues.map: queues =>
-                QueueViews.queuesTableHtml(queues).render
+          queueService
+            .createQueue(queueName)
+            .map:
+              QueueViews.queuesTableHtml(_).render
 
     Http4sServerInterpreter[IO]().toRoutes(
       List(
@@ -93,20 +143,22 @@ object QueueRoutes extends Auth:
         queuesTableEndpoint,
         queueDetailEndpoint,
         queueMessagesEndpoint,
-        queueSettingsEndpoint,
+        messagesTableEndpoint,
+        enableNotifyInsertEndpoint,
+        disableNotifyInsertEndpoint,
+        updateNotifyInsertEndpoint,
+        settingsPurgeQueueEndpoint,
         deleteQueueEndpoint,
         purgeQueueEndpoint,
         createQueueEndpoint
       )
     )
 
-  private def sortQueues(queues: List[QueueInfo], sort: Option[SortState]): List[QueueInfo] =
-    sort match
-      case None                         => queues
-      case Some(SortState(column, dir)) =>
-        val sorted = column match
-          case SortColumn.Name      => queues.sortBy(_.queueName.toString)
-          case SortColumn.CreatedAt => queues.sortBy(_.createdAt.toString)
-        dir match
-          case SortDir.Asc  => sorted
-          case SortDir.Desc => sorted.reverse
+  private def parsePageSize(param: Option[String]): PageSize =
+    param
+      .flatMap(_.toIntOption)
+      .flatMap:
+        case 50 => Some(PageSize.Fifty)
+        case 10 => Some(PageSize.Ten)
+        case _  => None
+      .getOrElse(PageSize.Ten)

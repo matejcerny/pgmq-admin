@@ -18,6 +18,7 @@ CLAUDE.md
 .claude/
 .codex/
 .mcp.json
+.cellar
 .scalex
 # Logfiles and rotated logfiles.
 *.log

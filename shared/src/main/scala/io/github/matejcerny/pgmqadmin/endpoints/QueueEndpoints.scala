@@ -32,15 +32,49 @@ object QueueEndpoints:
       .in("queues" / path[String]("queueName") / "detail")
       .out(htmlBodyUtf8)
 
-  val queueMessages: AuthenticatedEndpoint[(String, Option[Int])] =
+  val queueMessages: AuthenticatedEndpoint[(String, Option[String], Option[String], Option[String], Option[String])] =
     authenticated.get
       .in("queues" / path[String]("queueName") / "messages")
-      .in(query[Option[Int]]("qty"))
+      .in(query[Option[String]]("pageSize"))
+      .in(query[Option[String]]("cursor"))
+      .in(query[Option[String]]("sortBy"))
+      .in(query[Option[String]]("sortDir"))
+      .out(htmlBodyUtf8)
+
+  val messagesTable: AuthenticatedEndpoint[(String, Option[String], Option[String], Option[String], Option[String])] =
+    authenticated.get
+      .in("queues" / path[String]("queueName") / "messages" / "table")
+      .in(query[Option[String]]("pageSize"))
+      .in(query[Option[String]]("cursor"))
+      .in(query[Option[String]]("sortBy"))
+      .in(query[Option[String]]("sortDir"))
       .out(htmlBodyUtf8)
 
   val queueSettings: AuthenticatedEndpoint[String] =
     authenticated.get
       .in("queues" / path[String]("queueName") / "settings")
+      .out(htmlBodyUtf8)
+
+  val enableNotifyInsert: AuthenticatedEndpoint[(String, Option[Int])] =
+    authenticated.post
+      .in("queues" / path[String]("queueName") / "settings" / "notify-insert" / "enable")
+      .in(query[Option[Int]]("throttleMs"))
+      .out(htmlBodyUtf8)
+
+  val disableNotifyInsert: AuthenticatedEndpoint[String] =
+    authenticated.post
+      .in("queues" / path[String]("queueName") / "settings" / "notify-insert" / "disable")
+      .out(htmlBodyUtf8)
+
+  val updateNotifyInsert: AuthenticatedEndpoint[(String, Int)] =
+    authenticated.post
+      .in("queues" / path[String]("queueName") / "settings" / "notify-insert" / "update")
+      .in(query[Int]("throttleMs"))
+      .out(htmlBodyUtf8)
+
+  val settingsPurgeQueue: AuthenticatedEndpoint[String] =
+    authenticated.post
+      .in("queues" / path[String]("queueName") / "settings" / "purge")
       .out(htmlBodyUtf8)
 
   val createQueue: AuthenticatedEndpoint[String] =

@@ -17,7 +17,12 @@ object View:
         rel := "stylesheet",
         href := "https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
       ),
-      tag("style")(":root { --pico-spacing: 0.5rem; --pico-typography-spacing-vertical: 0.5rem; }"),
+      tag("style")(
+        ":root { --pico-spacing: 0.5rem; --pico-typography-spacing-vertical: 0.5rem; } " +
+          "th a { color: inherit; text-decoration: none; } " +
+          "th a:hover { text-decoration: underline; } " +
+          "th.muted { color: var(--pico-muted-color); }"
+      ),
       script(src := "https://unpkg.com/htmx.org@2.0.4"),
       themeScript
     )
