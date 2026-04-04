@@ -1,9 +1,9 @@
 package io.github.matejcerny.pgmqadmin.views
 
-import io.github.matejcerny.pgmqadmin.model.{ SortColumn, SortDir, SortState }
+import io.github.matejcerny.pgmqadmin.domain.{ SortColumn, SortDir, SortState }
 import io.github.matejcerny.pgmqadmin.views.Htmx.*
 import io.github.matejcerny.pgmqadmin.views.View.render
-import pgmq4s.QueueInfo
+import pgmq4s.domain.QueueInfo
 import scalatags.Text.all.*
 import scalatags.Text.tags2
 

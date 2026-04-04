@@ -4,8 +4,9 @@ import sttp.tapir.*
 
 object AuthEndpoint:
 
-  type AuthenticatedEndpoint[I] = Endpoint[Option[String], I, Unit, String, Any]
+  type AuthenticatedEndpoint[I] = Endpoint[Option[String], I, String, String, Any]
 
-  val authenticated: Endpoint[Option[String], Unit, Unit, Unit, Any] =
+  val authenticated: Endpoint[Option[String], Unit, String, Unit, Any] =
     endpoint
       .securityIn(cookie[Option[String]]("session"))
+      .errorOut(stringBody)

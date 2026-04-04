@@ -1,4 +1,4 @@
-package io.github.matejcerny.pgmqadmin.model
+package io.github.matejcerny.pgmqadmin.domain
 
 enum SortColumn(val value: String):
   case Name extends SortColumn("name")
