@@ -42,15 +42,15 @@ object QueueViews:
       thead(
         tr(
           sortableHeader("Queue Name", SortColumn.Name, sort),
-          th("Partitioned"),
-          th("Unlogged"),
+          th(cls := "muted")("Partitioned"),
+          th(cls := "muted")("Unlogged"),
           sortableHeader("Created At", SortColumn.CreatedAt, sort),
-          th("Actions")
+          th(cls := "muted")("Actions")
         )
       ),
       tbody(
         queues.map: qi =>
-          val name: String = qi.queueName.toString
+          val name = qi.queueName.toString
           tr(
             td(a(href := s"/queues/$name/detail")(name)),
             td(qi.isPartitioned.render),
@@ -78,21 +78,19 @@ object QueueViews:
     )
 
   private def sortableHeader(label: String, column: SortColumn, sort: Option[SortState]): Tag =
-    val next: Option[SortState] = sort match
+    val next = sort match
       case Some(s) => s.nextFor(column)
       case None    => Some(SortState.firstFor(column))
-    val arrow: String = sort match
+    val arrow = sort match
       case Some(SortState(`column`, SortDir.Asc))  => " \u25B2"
       case Some(SortState(`column`, SortDir.Desc)) => " \u25BC"
       case _                                       => ""
-    val url: String = next match
+    val url = next match
       case Some(s) => s"/queues/table?sortBy=${s.column.value}&sortDir=${s.dir.value}"
       case None    => "/queues/table"
     th(
       a(
         href := "#",
-        attr("role") := "button",
-        cls := "outline secondary",
         hxGet := url,
         hxTarget := "#queue-table-container",
         hxSwap := "innerHTML"

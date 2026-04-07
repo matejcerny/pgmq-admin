@@ -1,35 +1,235 @@
 package io.github.matejcerny.pgmqadmin.views
 
+import io.github.matejcerny.pgmqadmin.domain.MessageSortState
 import io.github.matejcerny.pgmqadmin.views.Htmx.*
-import pgmq4s.domain.Message.*
-import pgmq4s.domain.QueueMetrics
+import pgmq4s.domain.pagination.{ CursorPage, InspectedMessage, MessageSortField, PageSize, SortDirection }
+import pgmq4s.domain.{ NotifyThrottle, QueueMetrics }
 import scalatags.Text.all.*
 import scalatags.Text.tags2
 
 object QueueDetailViews:
 
-  def queueDetailContent(queueName: String, metrics: Option[QueueMetrics]): Frag =
+  def queueDetailContent(queueName: String, metrics: Option[QueueMetrics], notifyState: Option[NotifyThrottle]): Frag =
     frag(
       breadcrumb(queueName),
       tabNav(queueName, active = "Detail"),
       metrics match
         case None    => p(s"""Queue "$queueName" not found.""")
-        case Some(m) => metricsGrid(m)
+        case Some(m) =>
+          frag(
+            metricsGrid(m),
+            settingsGrid(queueName, notifyState, purged = false)
+          )
     )
 
-  def queueMessagesContent(queueName: String, messages: List[Inbound.Plain[String]]): Frag =
+  def queueMessagesContent(
+      queueName: String,
+      page: CursorPage[InspectedMessage],
+      sortState: MessageSortState,
+      pageSize: PageSize
+  ): Frag =
     frag(
       breadcrumb(queueName),
       tabNav(queueName, active = "Messages"),
-      if messages.isEmpty then p("No messages in this queue.")
-      else messagesTable(messages)
+      div(id := "messages-container")(
+        messagesTableHtml(queueName, page, sortState, pageSize)
+      )
     )
 
-  def queueSettingsContent(queueName: String): Frag =
-    frag(
-      breadcrumb(queueName),
-      tabNav(queueName, active = "Settings"),
-      p("Work in progress")
+  def messagesTableHtml(
+      queueName: String,
+      page: CursorPage[InspectedMessage],
+      sortState: MessageSortState,
+      pageSize: PageSize
+  ): Tag =
+    div(
+      if page.items.isEmpty then
+        frag(
+          pageSizeToolbar(queueName, sortState, pageSize, 0),
+          p("No messages in this queue.")
+        )
+      else
+        frag(
+          pageSizeToolbar(queueName, sortState, pageSize, page.items.size),
+          messagesTable(queueName, page.items, sortState, pageSize),
+          paginationControls(queueName, page, sortState, pageSize)
+        )
+    )
+
+  def settingsGrid(queueName: String, notifyState: Option[NotifyThrottle], purged: Boolean): Frag =
+    div(id := "settings-body")(
+      if purged then
+        div(
+          attr("role") := "alert",
+          cls := "pico-background-jade-200",
+          style := "padding: 0.75rem; margin-bottom: 1rem; border-radius: var(--pico-border-radius)"
+        )("Queue purged successfully.")
+      else frag(),
+      div(cls := "grid")(
+        notifyInsertCard(queueName, notifyState),
+        dangerZoneCard(queueName)
+      ),
+      notifyInsertModal(queueName, notifyState)
+    )
+
+  def notifyInsertCard(queueName: String, notifyState: Option[NotifyThrottle]): Tag =
+    tags2.article(
+      tag("header")(small("Notifications")),
+      notifyState match
+        case None =>
+          p(small("Disabled"))
+        case Some(nt) =>
+          frag(
+            p(small("Enabled")),
+            p(small("Throttle: ", strong(s"${nt.throttleInterval.toMillis}ms"))),
+            p(small("Last notified: ", nt.lastNotifiedAt.toString))
+          ),
+      tag("footer")(
+        button(
+          cls := "outline",
+          attr("onclick") := s"document.getElementById('notify-modal-$queueName').showModal();"
+        )("Configure")
+      )
+    )
+
+  def notifyInsertModalBody(queueName: String, notifyState: Option[NotifyThrottle]): Tag =
+    tags2.article(id := "notify-modal-content")(
+      tag("header")(
+        a(
+          href := "#",
+          attr("aria-label") := "Close",
+          attr("rel") := "prev",
+          attr("onclick") := "this.closest('dialog').close(); return false;"
+        ),
+        strong("Notifications")
+      ),
+      notifyState match
+        case None =>
+          p("Notifications are currently ", strong("disabled"), " for this queue.")
+        case Some(nt) =>
+          frag(
+            p("Notifications are currently ", strong("enabled"), " for this queue."),
+            label(
+              "Throttle interval (ms)",
+              input(
+                tpe := "number",
+                id := s"throttle-ms-$queueName",
+                value := nt.throttleInterval.toMillis.toString,
+                attr("min") := "1"
+              )
+            )
+          ),
+      notifyState match
+        case None =>
+          tag("footer")(
+            button(
+              cls := "secondary",
+              attr("onclick") := "this.closest('dialog').close();"
+            )("Cancel"),
+            button(
+              hxPost := s"/queues/$queueName/settings/notify-insert/enable?throttleMs=250",
+              hxTarget := "#notify-modal-content",
+              hxSwap := "outerHTML"
+            )("Enable Notifications")
+          )
+        case Some(_) =>
+          tag("footer")(
+            button(
+              cls := "secondary",
+              attr("onclick") := "this.closest('dialog').close();"
+            )("Cancel"),
+            button(
+              cls := "outline secondary",
+              hxPost := s"/queues/$queueName/settings/notify-insert/disable",
+              hxTarget := "#notify-modal-content",
+              hxSwap := "outerHTML"
+            )("Disable"),
+            button(
+              attr("onclick") :=
+                s"""var ms = document.getElementById('throttle-ms-$queueName').value;
+                   |htmx.ajax('POST', '/queues/$queueName/settings/notify-insert/update?throttleMs=' + ms, {target: '#notify-modal-content', swap: 'outerHTML'});""".stripMargin
+            )("Save")
+          )
+    )
+
+  private def dangerZoneCard(queueName: String): Tag =
+    tags2.article(
+      tag("header")(small("Danger Zone")),
+      p(small("Destructive operations for this queue.")),
+      tag("footer")(
+        div(style := "display: flex; gap: 0.5rem")(
+          button(
+            cls := "outline secondary",
+            attr("onclick") := s"document.getElementById('purge-modal-$queueName').showModal();"
+          )("Purge Queue"),
+          button(
+            cls := "outline secondary",
+            attr("onclick") := s"document.getElementById('delete-modal-$queueName').showModal();"
+          )("Delete Queue")
+        )
+      ),
+      purgeModal(queueName),
+      deleteModal(queueName)
+    )
+
+  private def notifyInsertModal(queueName: String, notifyState: Option[NotifyThrottle]): Tag =
+    tag("dialog")(id := s"notify-modal-$queueName")(
+      notifyInsertModalBody(queueName, notifyState)
+    )
+
+  private def purgeModal(queueName: String): Tag =
+    tag("dialog")(id := s"purge-modal-$queueName")(
+      tags2.article(
+        tag("header")(
+          a(
+            href := "#",
+            attr("aria-label") := "Close",
+            attr("rel") := "prev",
+            attr("onclick") := "this.closest('dialog').close(); return false;"
+          ),
+          strong("Purge Queue")
+        ),
+        p(s"""Are you sure you want to purge all messages from queue "$queueName"?"""),
+        tag("footer")(
+          button(
+            cls := "secondary",
+            attr("onclick") := "this.closest('dialog').close();"
+          )("Cancel"),
+          button(
+            hxPost := s"/queues/$queueName/settings/purge",
+            hxTarget := "#settings-body",
+            hxSwap := "outerHTML",
+            attr("onclick") := "this.closest('dialog').close();"
+          )("Purge")
+        )
+      )
+    )
+
+  private def deleteModal(queueName: String): Tag =
+    tag("dialog")(id := s"delete-modal-$queueName")(
+      tags2.article(
+        tag("header")(
+          a(
+            href := "#",
+            attr("aria-label") := "Close",
+            attr("rel") := "prev",
+            attr("onclick") := "this.closest('dialog').close(); return false;"
+          ),
+          strong("Delete Queue")
+        ),
+        p(s"""Are you sure you want to delete queue "$queueName"? This action cannot be undone."""),
+        tag("footer")(
+          button(
+            cls := "secondary",
+            attr("onclick") := "this.closest('dialog').close();"
+          )("Cancel"),
+          button(
+            hxDelete := s"/queues/$queueName",
+            attr("hx-on::after-request") := "window.location.href = '/queues';",
+            attr("onclick") := "this.closest('dialog').close();"
+          )("Delete")
+        )
+      )
     )
 
   private def metricsGrid(m: QueueMetrics): Frag =
@@ -55,16 +255,47 @@ object QueueDetailViews:
         else if s < 86400 then s"${s / 3600}h ${(s % 3600) / 60}m"
         else s"${s / 86400}d ${(s % 86400) / 3600}h"
 
-  private def messagesTable(messages: List[Inbound.Plain[String]]): Tag =
+  private def pageSizeToolbar(
+      queueName: String,
+      sortState: MessageSortState,
+      pageSize: PageSize,
+      messageCount: Int
+  ): Tag =
+    div(style := "display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem")(
+      small(style := "color: var(--pico-muted-color)")(s"Showing $messageCount messages"),
+      div(style := "display: flex; align-items: center; gap: 0.5rem")(
+        label(style := "margin-bottom: 0")("Page size:"),
+        tag("select")(
+          style := "width: auto; margin-bottom: 0",
+          hxGet := messagesTableUrl(queueName, sortState, None, None),
+          hxTarget := "#messages-container",
+          hxSwap := "innerHTML",
+          attr("name") := "pageSize",
+          hxInclude := "this"
+        )(
+          option(value := "10", if pageSizeValue(pageSize) == 10 then selected else frag())("10"),
+          option(value := "50", if pageSizeValue(pageSize) == 50 then selected else frag())("50")
+        )
+      )
+    )
+
+  private def messagesTable(
+      queueName: String,
+      messages: List[InspectedMessage],
+      sortState: MessageSortState,
+      pageSize: PageSize
+  ): Tag =
     div(style := "overflow-x: auto")(
       table(cls := "striped")(
         thead(
           tr(
-            th("Message ID"),
-            th("Read Count"),
-            th("Enqueued At"),
-            th("Visibility Timeout"),
-            th("Payload")
+            sortableHeader("Message ID", MessageSortField.Id, queueName, sortState, pageSize),
+            sortableHeader("Read Count", MessageSortField.ReadCount, queueName, sortState, pageSize),
+            sortableHeader("Enqueued At", MessageSortField.EnqueuedAt, queueName, sortState, pageSize),
+            sortableHeader("Visible At", MessageSortField.VisibleAt, queueName, sortState, pageSize),
+            sortableHeader("Last Read At", MessageSortField.LastReadAt, queueName, sortState, pageSize),
+            th(cls := "muted")("Headers"),
+            th(cls := "muted")("Payload")
           )
         ),
         tbody(
@@ -74,11 +305,88 @@ object QueueDetailViews:
               td(msg.readCount.toString),
               td(msg.enqueuedAt.toString),
               td(msg.visibleAt.toString),
+              td(msg.lastReadAt.fold("N/A")(_.toString)),
+              td(msg.headers.getOrElse("N/A")),
               td(pre(code(msg.payload)))
             )
         )
       )
     )
+
+  private def sortableHeader(
+      label: String,
+      column: MessageSortField,
+      queueName: String,
+      sortState: MessageSortState,
+      pageSize: PageSize
+  ): Tag =
+    val next = sortState.nextFor(column)
+    val arrow =
+      if sortState.field == column then
+        sortState.direction match
+          case SortDirection.Asc  => " \u25B2"
+          case SortDirection.Desc => " \u25BC"
+      else ""
+    val url = messagesTableUrl(queueName, next, Some(pageSize), None)
+    th(
+      a(
+        href := "#",
+        hxGet := url,
+        hxTarget := "#messages-container",
+        hxSwap := "innerHTML"
+      )(label + arrow)
+    )
+
+  private def paginationControls(
+      queueName: String,
+      page: CursorPage[InspectedMessage],
+      sortState: MessageSortState,
+      pageSize: PageSize
+  ): Tag =
+    div(style := "display: flex; justify-content: space-between; margin-top: 1rem")(
+      page.prevCursor match
+        case Some(cursor) =>
+          a(
+            href := "#",
+            attr("role") := "button",
+            cls := "outline",
+            hxGet := messagesTableUrl(queueName, sortState, Some(pageSize), Some(cursor.value)),
+            hxTarget := "#messages-container",
+            hxSwap := "innerHTML"
+          )("Previous")
+        case None =>
+          span()
+      ,
+      page.nextCursor match
+        case Some(cursor) =>
+          a(
+            href := "#",
+            attr("role") := "button",
+            cls := "outline",
+            hxGet := messagesTableUrl(queueName, sortState, Some(pageSize), Some(cursor.value)),
+            hxTarget := "#messages-container",
+            hxSwap := "innerHTML"
+          )("Next")
+        case None =>
+          span()
+    )
+
+  private def messagesTableUrl(
+      queueName: String,
+      sortState: MessageSortState,
+      pageSize: Option[PageSize],
+      cursor: Option[String]
+  ): String =
+    val params = List(
+      pageSize.map(ps => s"pageSize=${pageSizeValue(ps)}"),
+      cursor.map(c => s"cursor=$c"),
+      Some(s"sortBy=${sortState.field.toString}"),
+      Some(s"sortDir=${sortState.direction.toString}")
+    ).flatten.mkString("&")
+    s"/queues/$queueName/messages/table?$params"
+
+  private def pageSizeValue(pageSize: PageSize): Int =
+    pageSize.value
 
   private def tabNav(queueName: String, active: String): Frag =
     tags2.nav(
@@ -87,10 +395,6 @@ object QueueDetailViews:
         li(
           if active == "Messages" then strong("Messages")
           else a(href := s"/queues/$queueName/messages")("Messages")
-        ),
-        li(
-          if active == "Settings" then strong("Settings")
-          else a(href := s"/queues/$queueName/settings")("Settings")
         )
       )
     )

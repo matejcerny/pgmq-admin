@@ -4,10 +4,11 @@ import cats.effect.{ IO, IOApp }
 import cats.syntax.semigroupk.*
 import io.github.matejcerny.pgmqadmin.config.AppConfig
 import io.github.matejcerny.pgmqadmin.routes.{ DashboardRoutes, MetricRoutes, QueueRoutes, TopicRoutes }
+import io.github.matejcerny.pgmqadmin.services.*
 import natchez.Trace
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Router
-import pgmq4s.skunk.{ SkunkPgmqAdmin, SkunkPgmqClient }
+import pgmq4s.skunk.{ SkunkPgmqAdmin, SkunkPgmqInspector }
 import skunk.Session
 
 object App extends IOApp.Simple:
@@ -28,10 +29,14 @@ object App extends IOApp.Simple:
       )
       .flatMap: pool =>
         val admin = SkunkPgmqAdmin[IO](pool)
-        val client = SkunkPgmqClient[IO](pool)
+        val inspector = SkunkPgmqInspector[IO](pool)
+        val queueService = QueueService(admin)
+        val messageService = MessageService(inspector)
+        val notificationService = NotificationService(admin)
+
         val routes =
           DashboardRoutes.routes <+>
-            QueueRoutes.routes(admin, client) <+>
+            QueueRoutes.routes(queueService, messageService, notificationService) <+>
             TopicRoutes.routes <+>
             MetricRoutes.routes
 
