@@ -127,13 +127,7 @@ object QueueViews:
             attr("onclick") := "this.closest('dialog').close();"
           )("Cancel"),
           button(
-            attr("onclick") :=
-              """var name = document.getElementById('create-queue-name').value.trim();
-                |if (name) {
-                |  htmx.ajax('POST', '/queues/' + encodeURIComponent(name), {target: '#queue-table-container', swap: 'innerHTML'});
-                |  this.closest('dialog').close();
-                |  document.getElementById('create-queue-name').value = '';
-                |}""".stripMargin
+            attr("onclick") := "createQueue.call(this);"
           )("Create")
         )
       )

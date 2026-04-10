@@ -3,7 +3,7 @@ package io.github.matejcerny.pgmqadmin
 import cats.effect.{ IO, IOApp }
 import cats.syntax.semigroupk.*
 import io.github.matejcerny.pgmqadmin.config.AppConfig
-import io.github.matejcerny.pgmqadmin.routes.{ DashboardRoutes, MetricRoutes, QueueRoutes, TopicRoutes }
+import io.github.matejcerny.pgmqadmin.routes.{ DashboardRoutes, MetricRoutes, QueueRoutes, StaticRoutes, TopicRoutes }
 import io.github.matejcerny.pgmqadmin.services.*
 import natchez.Trace
 import org.http4s.ember.server.EmberServerBuilder
@@ -35,7 +35,8 @@ object App extends IOApp.Simple:
         val notificationService = NotificationService(admin)
 
         val routes =
-          DashboardRoutes.routes <+>
+          StaticRoutes.routes <+>
+            DashboardRoutes.routes <+>
             QueueRoutes.routes(queueService, messageService, notificationService) <+>
             TopicRoutes.routes <+>
             MetricRoutes.routes
