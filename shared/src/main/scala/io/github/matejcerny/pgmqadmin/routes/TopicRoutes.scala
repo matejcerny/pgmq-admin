@@ -2,6 +2,7 @@ package io.github.matejcerny.pgmqadmin.routes
 
 import cats.data.EitherT
 import cats.effect.IO
+import io.github.matejcerny.pgmqadmin.domain.AppError
 import io.github.matejcerny.pgmqadmin.endpoints.TopicEndpoints.*
 import io.github.matejcerny.pgmqadmin.views.*
 import org.http4s.HttpRoutes
@@ -13,7 +14,7 @@ object TopicRoutes extends Auth:
 
     val topicsPageEndpoint =
       secure(topicsPage): _ =>
-        (_: Unit) => EitherT.pure[IO, String](View.fullPage("Topics", "Topics", TopicViews.topicsContent))
+        (_: Unit) => EitherT.pure[IO, AppError](View.fullPage("Topics", "Topics", TopicViews.topicsContent))
 
     Http4sServerInterpreter[IO]().toRoutes(
       List(topicsPageEndpoint)

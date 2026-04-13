@@ -2,6 +2,7 @@ package io.github.matejcerny.pgmqadmin.routes
 
 import cats.data.EitherT
 import cats.effect.IO
+import io.github.matejcerny.pgmqadmin.domain.AppError
 import io.github.matejcerny.pgmqadmin.endpoints.DashboardEndpoints.*
 import io.github.matejcerny.pgmqadmin.views.*
 import org.http4s.HttpRoutes
@@ -13,7 +14,8 @@ object DashboardRoutes extends Auth:
 
     val dashboardPageEndpoint =
       secure(dashboardPage): _ =>
-        (_: Unit) => EitherT.pure[IO, String](View.fullPage("Dashboard", "Dashboard", DashboardViews.dashboardContent))
+        (_: Unit) =>
+          EitherT.pure[IO, AppError](View.fullPage("Dashboard", "Dashboard", DashboardViews.dashboardContent))
 
     Http4sServerInterpreter[IO]().toRoutes(
       List(dashboardPageEndpoint)

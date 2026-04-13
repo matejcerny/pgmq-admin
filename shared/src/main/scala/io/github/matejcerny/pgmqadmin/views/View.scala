@@ -17,14 +17,12 @@ object View:
         rel := "stylesheet",
         href := "https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"
       ),
-      tag("style")(
-        ":root { --pico-spacing: 0.5rem; --pico-typography-spacing-vertical: 0.5rem; } " +
-          "th a { color: inherit; text-decoration: none; } " +
-          "th a:hover { text-decoration: underline; } " +
-          "th.muted { color: var(--pico-muted-color); }"
+      link(
+        rel := "stylesheet",
+        href := "/css/app.css"
       ),
       script(src := "https://unpkg.com/htmx.org@2.0.4"),
-      themeScript
+      script(src := "/js/app.js")
     )
 
   def fullPage(activeNav: String, pageTitle: String, bodyContent: Frag): String =
@@ -33,48 +31,49 @@ object View:
       attr("data-theme") := "light",
       pageHead(pageTitle),
       body(
-        navigation(activeNav),
-        tag("main")(cls := "container")(bodyContent)
+        cls := "layout",
+        headerBar,
+        sidebar(activeNav),
+        div(cls := "main-content")(
+          tag("main")(cls := "container")(bodyContent)
+        ),
+        script(raw("initSidebar();"))
       )
     ).render
 
-  private def navigation(activeNav: String): Tag =
-    tags2.nav(cls := "container")(
-      ul(
-        li(strong(a(href := "/")("pgmq-admin"))),
-        li(navLink("Dashboard", "/", activeNav)),
-        li(navLink("Queues", "/queues", activeNav)),
-        li(navLink("Topics", "/topics", activeNav)),
-        li(navLink("Metrics", "/metrics", activeNav))
+  private val headerBar: Tag =
+    tag("header")(cls := "top-bar")(
+      div(cls := "top-bar-left")(
+        button(
+          cls := "sidebar-toggle",
+          attr("aria-label") := "Toggle menu",
+          attr("onclick") := "toggleSidebar()"
+        )("\u2630"),
+        strong(a(href := "/")("pgmq-admin"))
       ),
-      ul(
-        li(small(s"v${BuildInfo.version}")),
-        li(
-          a(
-            href := "#",
-            attr("role") := "button",
-            cls := "outline secondary",
-            attr("onclick") := "toggleTheme(); return false;"
-          )("\uD83C\uDF13")
+      div(cls := "top-bar-right")(
+        small(s"v${BuildInfo.version}"),
+        a(
+          href := "#",
+          attr("role") := "button",
+          cls := "outline secondary",
+          attr("onclick") := "toggleTheme(); return false;"
+        )("\uD83C\uDF13")
+      )
+    )
+
+  private def sidebar(activeNav: String): Tag =
+    tag("aside")(cls := "sidebar", id := "sidebar")(
+      tags2.nav(
+        ul(
+          li(sidebarLink("Dashboard", "/", activeNav)),
+          li(sidebarLink("Queues", "/queues", activeNav)),
+          li(sidebarLink("Topics", "/topics", activeNav)),
+          li(sidebarLink("Metrics", "/metrics", activeNav))
         )
       )
     )
 
-  private def navLink(label: String, href_ : String, activeNav: String): Tag =
-    if label == activeNav then a(href := href_, attr("aria-current") := "page")(label)
+  private def sidebarLink(label: String, href_ : String, activeNav: String): Tag =
+    if label == activeNav then a(href := href_, cls := "active")(label)
     else a(href := href_)(label)
-
-  private val themeScript: Tag =
-    script(raw("""
-        |var saved = localStorage.getItem('theme');
-        |if (saved) {
-        |  document.documentElement.setAttribute('data-theme', saved);
-        |}
-        |
-        |function toggleTheme() {
-        |  var html = document.documentElement;
-        |  var current = html.getAttribute('data-theme');
-        |  var next = current === 'dark' ? 'light' : 'dark';
-        |  html.setAttribute('data-theme', next);
-        |  localStorage.setItem('theme', next);
-        |}""".stripMargin))

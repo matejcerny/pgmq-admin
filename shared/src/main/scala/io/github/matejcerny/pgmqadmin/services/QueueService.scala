@@ -2,8 +2,8 @@ package io.github.matejcerny.pgmqadmin.services
 
 import cats.data.EitherT
 import cats.effect.IO
-import cats.syntax.either.*
-import io.github.matejcerny.pgmqadmin.domain.{ SortColumn, SortDir, SortState }
+import io.github.matejcerny.pgmqadmin.domain.{ AppError, SortColumn, SortDir, SortState }
+import io.github.matejcerny.pgmqadmin.domain.AppError.*
 import pgmq4s.PgmqAdmin
 import pgmq4s.domain.{ QueueInfo, QueueMetrics, QueueName }
 
@@ -12,33 +12,30 @@ class QueueService(admin: PgmqAdmin[IO]):
   def listQueues(
       sortBy: Option[String],
       sortDir: Option[String]
-  ): EitherT[IO, String, (List[QueueInfo], Option[SortState])] =
-    EitherT
-      .liftF(admin.listQueues)
-      .map: queues =>
-        val sort = SortState.from(sortBy, sortDir)
-        (sortQueues(queues, sort), sort)
+  ): EitherT[IO, AppError, (List[QueueInfo], Option[SortState])] =
+    admin.listQueues.toDatabaseError.map: queues =>
+      val sort = SortState.from(sortBy, sortDir)
+      (sortQueues(queues, sort), sort)
 
-  def getMetrics(queueName: String): EitherT[IO, String, Option[QueueMetrics]] =
-    QueueName(queueName).toEitherT[IO].semiflatMap(admin.metrics)
+  def getMetrics(queueName: String): EitherT[IO, AppError, Option[QueueMetrics]] =
+    QueueName(queueName).toValidationError
+      .flatTraverse: validatedName =>
+        admin.metrics(validatedName)
 
-  def createQueue(queueName: String): EitherT[IO, String, List[QueueInfo]] =
-    QueueName(queueName)
-      .toEitherT[IO]
-      .semiflatMap: qn =>
-        admin.createQueue(qn) *> admin.listQueues
+  def createQueue(queueName: String): EitherT[IO, AppError, List[QueueInfo]] =
+    QueueName(queueName).toValidationError
+      .flatTraverse: validatedName =>
+        admin.createQueue(validatedName) *> admin.listQueues
 
-  def dropQueue(queueName: String): EitherT[IO, String, List[QueueInfo]] =
-    QueueName(queueName)
-      .toEitherT[IO]
-      .semiflatMap: qn =>
-        admin.dropQueue(qn) *> admin.listQueues
+  def dropQueue(queueName: String): EitherT[IO, AppError, List[QueueInfo]] =
+    QueueName(queueName).toValidationError
+      .flatTraverse: validatedName =>
+        admin.dropQueue(validatedName) *> admin.listQueues
 
-  def purgeQueue(queueName: String): EitherT[IO, String, List[QueueInfo]] =
-    QueueName(queueName)
-      .toEitherT[IO]
-      .semiflatMap: qn =>
-        admin.purgeQueue(qn) *> admin.listQueues
+  def purgeQueue(queueName: String): EitherT[IO, AppError, List[QueueInfo]] =
+    QueueName(queueName).toValidationError
+      .flatTraverse: validatedName =>
+        admin.purgeQueue(validatedName) *> admin.listQueues
 
   private def sortQueues(queues: List[QueueInfo], sort: Option[SortState]): List[QueueInfo] =
     sort match

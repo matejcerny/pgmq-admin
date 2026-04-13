@@ -11,8 +11,7 @@ object QueueDetailViews:
 
   def queueDetailContent(queueName: String, metrics: Option[QueueMetrics], notifyState: Option[NotifyThrottle]): Frag =
     frag(
-      breadcrumb(queueName),
-      tabNav(queueName, active = "Detail"),
+      breadcrumbWithTabs(queueName, active = "Detail"),
       metrics match
         case None    => p(s"""Queue "$queueName" not found.""")
         case Some(m) =>
@@ -29,8 +28,7 @@ object QueueDetailViews:
       pageSize: PageSize
   ): Frag =
     frag(
-      breadcrumb(queueName),
-      tabNav(queueName, active = "Messages"),
+      breadcrumbWithTabs(queueName, active = "Messages"),
       div(id := "messages-container")(
         messagesTableHtml(queueName, page, sortState, pageSize)
       )
@@ -61,8 +59,7 @@ object QueueDetailViews:
       if purged then
         div(
           attr("role") := "alert",
-          cls := "pico-background-jade-200",
-          style := "padding: 0.75rem; margin-bottom: 1rem; border-radius: var(--pico-border-radius)"
+          cls := "pico-background-jade-200 alert-banner"
         )("Queue purged successfully.")
       else frag(),
       div(cls := "grid")(
@@ -145,9 +142,7 @@ object QueueDetailViews:
               hxSwap := "outerHTML"
             )("Disable"),
             button(
-              attr("onclick") :=
-                s"""var ms = document.getElementById('throttle-ms-$queueName').value;
-                   |htmx.ajax('POST', '/queues/$queueName/settings/notify-insert/update?throttleMs=' + ms, {target: '#notify-modal-content', swap: 'outerHTML'});""".stripMargin
+              attr("onclick") := s"saveNotifyThrottle('$queueName');"
             )("Save")
           )
     )
@@ -157,7 +152,7 @@ object QueueDetailViews:
       tag("header")(small("Danger Zone")),
       p(small("Destructive operations for this queue.")),
       tag("footer")(
-        div(style := "display: flex; gap: 0.5rem")(
+        div(cls := "button-row")(
           button(
             cls := "outline secondary",
             attr("onclick") := s"document.getElementById('purge-modal-$queueName').showModal();"
@@ -243,7 +238,7 @@ object QueueDetailViews:
   private def metricCard(label: String, value: String): Tag =
     tags2.article(
       tag("header")(small(label)),
-      strong(style := "font-size: 1.5rem")(value)
+      strong(cls := "metric-value")(value)
     )
 
   private def formatAge(seconds: Option[Long]): String =
@@ -261,12 +256,12 @@ object QueueDetailViews:
       pageSize: PageSize,
       messageCount: Int
   ): Tag =
-    div(style := "display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem")(
-      small(style := "color: var(--pico-muted-color)")(s"Showing $messageCount messages"),
-      div(style := "display: flex; align-items: center; gap: 0.5rem")(
-        label(style := "margin-bottom: 0")("Page size:"),
+    div(cls := "toolbar")(
+      small(cls := "text-muted")(s"Showing $messageCount messages"),
+      div(cls := "toolbar-group")(
+        label(cls := "inline-label")("Page size:"),
         tag("select")(
-          style := "width: auto; margin-bottom: 0",
+          cls := "inline-select",
           hxGet := messagesTableUrl(queueName, sortState, None, None),
           hxTarget := "#messages-container",
           hxSwap := "innerHTML",
@@ -285,7 +280,7 @@ object QueueDetailViews:
       sortState: MessageSortState,
       pageSize: PageSize
   ): Tag =
-    div(style := "overflow-x: auto")(
+    div(cls := "table-scroll")(
       table(cls := "striped")(
         thead(
           tr(
@@ -343,7 +338,7 @@ object QueueDetailViews:
       sortState: MessageSortState,
       pageSize: PageSize
   ): Tag =
-    div(style := "display: flex; justify-content: space-between; margin-top: 1rem")(
+    div(cls := "pagination")(
       page.prevCursor match
         case Some(cursor) =>
           a(
@@ -388,21 +383,21 @@ object QueueDetailViews:
   private def pageSizeValue(pageSize: PageSize): Int =
     pageSize.value
 
-  private def tabNav(queueName: String, active: String): Frag =
-    tags2.nav(
-      ul(
-        li(if active == "Detail" then strong("Detail") else a(href := s"/queues/$queueName/detail")("Detail")),
-        li(
-          if active == "Messages" then strong("Messages")
-          else a(href := s"/queues/$queueName/messages")("Messages")
+  private def breadcrumbWithTabs(queueName: String, active: String): Frag =
+    div(cls := "breadcrumb-tabs")(
+      tags2.nav(attr("aria-label") := "breadcrumb")(
+        ul(
+          li(a(href := "/queues")("Queues")),
+          li(queueName)
         )
-      )
-    )
-
-  private def breadcrumb(queueName: String): Frag =
-    tags2.nav(attr("aria-label") := "breadcrumb")(
-      ul(
-        li(a(href := "/queues")("Queues")),
-        li(queueName)
+      ),
+      tags2.nav(
+        ul(
+          li(if active == "Detail" then strong("Detail") else a(href := s"/queues/$queueName/detail")("Detail")),
+          li(
+            if active == "Messages" then strong("Messages")
+            else a(href := s"/queues/$queueName/messages")("Messages")
+          )
+        )
       )
     )
