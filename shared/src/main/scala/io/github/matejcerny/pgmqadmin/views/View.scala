@@ -25,14 +25,19 @@ object View:
       script(src := "/js/app.js")
     )
 
-  def fullPage(activeNav: String, pageTitle: String, bodyContent: Frag): String =
+  def fullPage(
+      activeNav: String,
+      pageTitle: String,
+      bodyContent: Frag,
+      breadcrumb: List[(String, String)] = Nil
+  ): String =
     "<!DOCTYPE html>\n" + html(
       attr("lang") := "en",
       attr("data-theme") := "light",
       pageHead(pageTitle),
       body(
         cls := "layout",
-        headerBar,
+        headerBar(breadcrumb),
         sidebar(activeNav),
         div(cls := "main-content")(
           tag("main")(cls := "container")(bodyContent)
@@ -41,15 +46,26 @@ object View:
       )
     ).render
 
-  private val headerBar: Tag =
+  private def headerBar(breadcrumb: List[(String, String)]): Tag =
     tag("header")(cls := "top-bar")(
       div(cls := "top-bar-left")(
-        button(
+        a(
           cls := "sidebar-toggle",
+          href := "#",
           attr("aria-label") := "Toggle menu",
-          attr("onclick") := "toggleSidebar()"
+          attr("onclick") := "toggleSidebar(); return false;"
         )("\u2630"),
-        strong(a(href := "/")("pgmq-admin"))
+        tag("nav")(cls := "header-breadcrumb", attr("aria-label") := "breadcrumb")(
+          ul(
+            li(strong(a(href := "/")("pgmq-admin"))),
+            breadcrumb
+              .dropRight(1)
+              .map: (label, path) =>
+                li(a(href := path)(label)),
+            breadcrumb.lastOption.map: (label, _) =>
+              li(label)
+          )
+        )
       ),
       div(cls := "top-bar-right")(
         small(s"v${BuildInfo.version}"),

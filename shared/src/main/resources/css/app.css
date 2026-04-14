@@ -41,13 +41,9 @@ body.layout {
 }
 
 .sidebar-toggle {
-  background: none;
-  border: none;
   font-size: 1.25rem;
   cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  color: var(--pico-color);
-  margin: 0;
+  text-decoration: none;
 }
 
 /* Sidebar */
@@ -118,16 +114,22 @@ nav ul {
   margin-bottom: 0;
 }
 
-/* Breadcrumb + tabs on one row */
-.breadcrumb-tabs {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
+/* Header breadcrumb */
+.header-breadcrumb,
+.header-breadcrumb ul {
+  margin: 0;
+  padding: 0;
 }
 
-.breadcrumb-tabs nav {
-  margin-bottom: 0;
+.header-breadcrumb li {
+  margin: 0;
+  padding: 0 0 0 0.75rem;
+}
+
+
+/* Detail/Messages tabs */
+.detail-tabs {
+  margin-bottom: 0.5rem;
 }
 
 /* Table header links */
@@ -191,6 +193,14 @@ th.muted {
 .inline-select {
   width: auto;
   margin-bottom: 0;
+  padding: 0.25rem 0.75rem;
+}
+
+/* Inline button (compact, matching inline-select height) */
+.inline-button {
+  width: auto;
+  margin-bottom: 0;
+  padding: 0.25rem 0.75rem;
 }
 
 /* Scrollable table wrapper */

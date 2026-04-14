@@ -11,7 +11,7 @@ object QueueDetailViews:
 
   def queueDetailContent(queueName: String, metrics: Option[QueueMetrics], notifyState: Option[NotifyThrottle]): Frag =
     frag(
-      breadcrumbWithTabs(queueName, active = "Detail"),
+      detailTabs(queueName, active = "Detail"),
       metrics match
         case None    => p(s"""Queue "$queueName" not found.""")
         case Some(m) =>
@@ -28,7 +28,7 @@ object QueueDetailViews:
       pageSize: PageSize
   ): Frag =
     frag(
-      breadcrumbWithTabs(queueName, active = "Messages"),
+      detailTabs(queueName, active = "Messages"),
       div(id := "messages-container")(
         messagesTableHtml(queueName, page, sortState, pageSize)
       )
@@ -270,7 +270,13 @@ object QueueDetailViews:
         )(
           option(value := "10", if pageSizeValue(pageSize) == 10 then selected else frag())("10"),
           option(value := "50", if pageSizeValue(pageSize) == 50 then selected else frag())("50")
-        )
+        ),
+        button(
+          cls := "secondary inline-button",
+          hxGet := messagesTableUrl(queueName, sortState, Some(pageSize), None),
+          hxTarget := "#messages-container",
+          hxSwap := "innerHTML"
+        )("Refresh")
       )
     )
 
@@ -383,21 +389,13 @@ object QueueDetailViews:
   private def pageSizeValue(pageSize: PageSize): Int =
     pageSize.value
 
-  private def breadcrumbWithTabs(queueName: String, active: String): Frag =
-    div(cls := "breadcrumb-tabs")(
-      tags2.nav(attr("aria-label") := "breadcrumb")(
-        ul(
-          li(a(href := "/queues")("Queues")),
-          li(queueName)
-        )
-      ),
-      tags2.nav(
-        ul(
-          li(if active == "Detail" then strong("Detail") else a(href := s"/queues/$queueName/detail")("Detail")),
-          li(
-            if active == "Messages" then strong("Messages")
-            else a(href := s"/queues/$queueName/messages")("Messages")
-          )
+  private def detailTabs(queueName: String, active: String): Frag =
+    tags2.nav(cls := "detail-tabs")(
+      ul(
+        li(if active == "Detail" then strong("Detail") else a(href := s"/queues/$queueName/detail")("Detail")),
+        li(
+          if active == "Messages" then strong("Messages")
+          else a(href := s"/queues/$queueName/messages")("Messages")
         )
       )
     )

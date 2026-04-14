@@ -23,7 +23,7 @@ object QueueRoutes extends Auth:
           queueService
             .listQueues(None, None)
             .map: (queues, _) =>
-              View.fullPage("Queues", "Queues", QueueViews.queuesContent(queues))
+              View.fullPage("Queues", "Queues", QueueViews.queuesContent(queues), List("Queues" -> "/queues"))
 
     val queuesTableEndpoint =
       secure(queuesTable): _ =>
@@ -42,7 +42,8 @@ object QueueRoutes extends Auth:
           yield View.fullPage(
             "Queues",
             s"Queue: $queueName",
-            QueueDetailViews.queueDetailContent(queueName, metrics, notifyState)
+            QueueDetailViews.queueDetailContent(queueName, metrics, notifyState),
+            List("Queues" -> "/queues", queueName -> "")
           )
 
     val queueMessagesEndpoint =
@@ -62,7 +63,8 @@ object QueueRoutes extends Auth:
               View.fullPage(
                 "Queues",
                 s"Queue: $queueName - Messages",
-                QueueDetailViews.queueMessagesContent(queueName, page, sortState, pageSize)
+                QueueDetailViews.queueMessagesContent(queueName, page, sortState, pageSize),
+                List("Queues" -> "/queues", queueName -> "")
               )
 
     val messagesTableEndpoint =
