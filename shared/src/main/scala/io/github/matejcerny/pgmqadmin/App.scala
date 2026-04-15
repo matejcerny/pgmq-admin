@@ -33,12 +33,13 @@ object App extends IOApp.Simple:
         val queueService = QueueService(admin)
         val messageService = MessageService(inspector)
         val notificationService = NotificationService(admin)
+        val topicService = TopicService(admin)
 
         val routes =
           StaticRoutes.routes <+>
             DashboardRoutes.routes <+>
             QueueRoutes.routes(queueService, messageService, notificationService) <+>
-            TopicRoutes.routes <+>
+            TopicRoutes.routes(topicService, queueService) <+>
             MetricRoutes.routes
 
         EmberServerBuilder
