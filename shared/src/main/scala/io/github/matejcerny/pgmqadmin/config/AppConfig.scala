@@ -17,7 +17,7 @@ case class DbConfig(
     port: Int,
     user: String,
     database: String,
-    password: Option[String],
+    password: String,
     poolSize: Int
 )
 
@@ -32,7 +32,7 @@ object AppConfig:
       port = 5432,
       user = "pgmq",
       database = "pgmq",
-      password = Some("pgmq"),
+      password = "pgmq",
       poolSize = 10
     )
   )
