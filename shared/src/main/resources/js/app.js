@@ -36,6 +36,26 @@ function createQueue() {
   }
 }
 
+/* Create binding modal */
+function createBinding() {
+  var pattern = document.getElementById('create-binding-pattern').value.trim();
+  var queueName = document.getElementById('create-binding-queue-name').value.trim();
+  if (pattern && queueName) {
+    htmx.ajax('POST', '/topics/bind?pattern=' + encodeURIComponent(pattern) + '&queueName=' + encodeURIComponent(queueName), {target: '#bindings-table-container', swap: 'innerHTML'});
+    this.closest('dialog').close();
+    document.getElementById('create-binding-pattern').value = '';
+    document.getElementById('create-binding-queue-name').value = '';
+  }
+}
+
+/* Test routing */
+function testRouting() {
+  var routingKey = document.getElementById('test-routing-key').value.trim();
+  if (routingKey) {
+    htmx.ajax('GET', '/topics/test-routing?routingKey=' + encodeURIComponent(routingKey), {target: '#test-routing-results', swap: 'innerHTML'});
+  }
+}
+
 /* Save notify throttle */
 function saveNotifyThrottle(queueName) {
   var ms = document.getElementById('throttle-ms-' + queueName).value;
